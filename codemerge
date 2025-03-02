@@ -34,14 +34,22 @@ public class DeepCopyDocx {
             newTable.getCTTbl().set(table.getCTTbl().copy()); // Deep copy table properties
         }
 
-        // Copy headers & footers
-        for (XWPFHeader header : sourceDoc.getHeaderList()) {
-            XWPFHeader newHeader = targetDoc.createHeader(header.getXWPFDocument().getRelationIndex(header));
-            newHeader.getCTHdrFtr().set(header.getCTHdrFtr().copy());
+        // Copy headers
+        for (XWPFHeader sourceHeader : sourceDoc.getHeaderList()) {
+            XWPFHeader newHeader = targetDoc.createHeader(HeaderFooterType.DEFAULT);
+            for (XWPFParagraph para : sourceHeader.getParagraphs()) {
+                XWPFParagraph newPara = newHeader.createParagraph();
+                newPara.getCTP().set(para.getCTP().copy());
+            }
         }
-        for (XWPFFooter footer : sourceDoc.getFooterList()) {
-            XWPFFooter newFooter = targetDoc.createFooter(footer.getXWPFDocument().getRelationIndex(footer));
-            newFooter.getCTHdrFtr().set(footer.getCTHdrFtr().copy());
+
+        // Copy footers
+        for (XWPFFooter sourceFooter : sourceDoc.getFooterList()) {
+            XWPFFooter newFooter = targetDoc.createFooter(HeaderFooterType.DEFAULT);
+            for (XWPFParagraph para : sourceFooter.getParagraphs()) {
+                XWPFParagraph newPara = newFooter.createParagraph();
+                newPara.getCTP().set(para.getCTP().copy());
+            }
         }
 
         // Save new document
