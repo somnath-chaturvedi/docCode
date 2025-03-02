@@ -1,0 +1,56 @@
+import java.io.*;
+import org.apache.poi.xwpf.usermodel.*;
+
+public class DeepCopyDocx {
+    public static void main(String[] args) throws Exception {
+        FileInputStream fis = new FileInputStream("source.docx");
+        XWPFDocument sourceDoc = new XWPFDocument(fis);
+        XWPFDocument targetDoc = new XWPFDocument();
+
+        // Copy paragraphs (including bullet points)
+        for (XWPFParagraph para : sourceDoc.getParagraphs()) {
+            XWPFParagraph newPara = targetDoc.createParagraph();
+            newPara.getCTP().set(para.getCTP().copy()); // Deep copy paragraph properties
+
+            if (para.getNumID() != null) {
+                newPara.setNumID(para.getNumID()); // Preserve bullet points/numbering
+            }
+
+            for (XWPFRun run : para.getRuns()) {
+                XWPFRun newRun = newPara.createRun();
+                newRun.setText(run.getText(0), 0);
+                newRun.setBold(run.isBold());
+                newRun.setItalic(run.isItalic());
+                newRun.setUnderline(run.getUnderline());
+                newRun.setFontSize(run.getFontSize());
+                newRun.setFontFamily(run.getFontFamily());
+                newRun.setColor(run.getColor());
+            }
+        }
+
+        // Copy tables
+        for (XWPFTable table : sourceDoc.getTables()) {
+            XWPFTable newTable = targetDoc.createTable();
+            newTable.getCTTbl().set(table.getCTTbl().copy()); // Deep copy table properties
+        }
+
+        // Copy headers & footers
+        for (XWPFHeader header : sourceDoc.getHeaderList()) {
+            XWPFHeader newHeader = targetDoc.createHeader(header.getXWPFDocument().getRelationIndex(header));
+            newHeader.getCTHdrFtr().set(header.getCTHdrFtr().copy());
+        }
+        for (XWPFFooter footer : sourceDoc.getFooterList()) {
+            XWPFFooter newFooter = targetDoc.createFooter(footer.getXWPFDocument().getRelationIndex(footer));
+            newFooter.getCTHdrFtr().set(footer.getCTHdrFtr().copy());
+        }
+
+        // Save new document
+        FileOutputStream fos = new FileOutputStream("deepcopy_output.docx");
+        targetDoc.write(fos);
+        fos.close();
+        sourceDoc.close();
+        targetDoc.close();
+
+        System.out.println("DOCX file deep copied successfully!");
+    }
+}
