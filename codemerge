@@ -1,64 +1,160 @@
-import java.io.*;
 import org.apache.poi.xwpf.usermodel.*;
+import org.apache.poi.util.Units;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 
-public class DeepCopyDocx {
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
+
+public class DocxDeepCopy {
+
     public static void main(String[] args) throws Exception {
-        FileInputStream fis = new FileInputStream("source.docx");
-        XWPFDocument sourceDoc = new XWPFDocument(fis);
-        XWPFDocument targetDoc = new XWPFDocument();
-
-        // Copy paragraphs (including bullet points)
-        for (XWPFParagraph para : sourceDoc.getParagraphs()) {
-            XWPFParagraph newPara = targetDoc.createParagraph();
-            newPara.getCTP().set(para.getCTP().copy()); // Deep copy paragraph properties
-
-            if (para.getNumID() != null) {
-                newPara.setNumID(para.getNumID()); // Preserve bullet points/numbering
-            }
-
-            for (XWPFRun run : para.getRuns()) {
-                XWPFRun newRun = newPara.createRun();
-                newRun.setText(run.getText(0), 0);
-                newRun.setBold(run.isBold());
-                newRun.setItalic(run.isItalic());
-                newRun.setUnderline(run.getUnderline());
-                newRun.setFontSize(run.getFontSize());
-                newRun.setFontFamily(run.getFontFamily());
-                newRun.setColor(run.getColor());
-            }
-        }
-
-        // Copy tables
-        for (XWPFTable table : sourceDoc.getTables()) {
-            XWPFTable newTable = targetDoc.createTable();
-            newTable.getCTTbl().set(table.getCTTbl().copy()); // Deep copy table properties
-        }
-
+        // Load the source document
+        XWPFDocument sourceDoc = new XWPFDocument(new FileInputStream("source.docx"));
+        
+        // Create a new destination document
+        XWPFDocument destDoc = new XWPFDocument();
+        
+        // Remove existing content from destination (optional)
+        clearDocument(destDoc);
+        
+        // Copy styles (simplified example)
+        copyStyles(sourceDoc, destDoc);
+        
         // Copy headers
         for (XWPFHeader sourceHeader : sourceDoc.getHeaderList()) {
-            XWPFHeader newHeader = targetDoc.createHeader(HeaderFooterType.DEFAULT);
-            for (XWPFParagraph para : sourceHeader.getParagraphs()) {
-                XWPFParagraph newPara = newHeader.createParagraph();
-                newPara.getCTP().set(para.getCTP().copy());
-            }
+            XWPFHeader destHeader = destDoc.createHeader(sourceHeader.getHeaderFooterPolicy().getSectionType());
+            copyBodyElements(sourceHeader, destHeader);
         }
-
+        
         // Copy footers
         for (XWPFFooter sourceFooter : sourceDoc.getFooterList()) {
-            XWPFFooter newFooter = targetDoc.createFooter(HeaderFooterType.DEFAULT);
-            for (XWPFParagraph para : sourceFooter.getParagraphs()) {
-                XWPFParagraph newPara = newFooter.createParagraph();
-                newPara.getCTP().set(para.getCTP().copy());
+            XWPFFooter destFooter = destDoc.createFooter(sourceFooter.getHeaderFooterPolicy().getSectionType());
+            copyBodyElements(sourceFooter, destFooter);
+        }
+        
+        // Copy main document body
+        copyBodyElements(sourceDoc, destDoc);
+        
+        // Save the destination document
+        FileOutputStream out = new FileOutputStream("destination.docx");
+        destDoc.write(out);
+        out.close();
+        sourceDoc.close();
+        destDoc.close();
+    }
+
+    private static void clearDocument(XWPFDocument doc) {
+        // Remove all body elements (paragraphs and tables)
+        for (int i = doc.getBodyElements().size() - 1; i >= 0; i--) {
+            doc.removeBodyElement(i);
+        }
+    }
+
+    private static void copyStyles(XWPFDocument source, XWPFDocument dest) {
+        XWPFStyles sourceStyles = source.getStyles();
+        if (sourceStyles != null) {
+            XWPFStyles destStyles = dest.createStyles();
+            for (XWPFStyle style : sourceStyles.getStyleList()) {
+                CTStyle ctStyle = style.getCTStyle();
+                XWPFStyle newStyle = new XWPFStyle(ctStyle, destStyles);
+                destStyles.addStyle(newStyle);
             }
         }
+    }
 
-        // Save new document
-        FileOutputStream fos = new FileOutputStream("deepcopy_output.docx");
-        targetDoc.write(fos);
-        fos.close();
-        sourceDoc.close();
-        targetDoc.close();
+    private static void copyBodyElements(IBody source, IBody dest) {
+        for (IBodyElement element : source.getBodyElements()) {
+            if (element instanceof XWPFParagraph) {
+                XWPFParagraph sourcePara = (XWPFParagraph) element;
+                XWPFParagraph destPara = ((XWPFBody) dest).createParagraph();
+                copyParagraph(sourcePara, destPara);
+            } else if (element instanceof XWPFTable) {
+                XWPFTable sourceTable = (XWPFTable) element;
+                XWPFTable destTable = ((XWPFBody) dest).createTable();
+                copyTable(sourceTable, destTable);
+            }
+        }
+    }
 
-        System.out.println("DOCX file deep copied successfully!");
+    private static void copyParagraph(XWPFParagraph sourcePara, XWPFParagraph destPara) {
+        // Copy paragraph properties
+        destPara.setAlignment(sourcePara.getAlignment());
+        destPara.setStyle(sourcePara.getStyle());
+        // Add more properties as needed
+        
+        // Copy runs
+        for (XWPFRun sourceRun : sourcePara.getRuns()) {
+            XWPFRun destRun = destPara.createRun();
+            copyRun(sourceRun, destRun);
+        }
+    }
+
+    private static void copyRun(XWPFRun sourceRun, XWPFRun destRun) {
+        // Copy text
+        destRun.setText(sourceRun.getText(0));
+        
+        // Copy formatting
+        destRun.setBold(sourceRun.isBold());
+        destRun.setItalic(sourceRun.isItalic());
+        destRun.setFontFamily(sourceRun.getFontFamily());
+        destRun.setFontSize(sourceRun.getFontSize());
+        // Add more properties as needed
+        
+        // Copy images
+        for (XWPFPicture picture : sourceRun.getEmbeddedPictures()) {
+            try {
+                XWPFPictureData pictureData = picture.getPictureData();
+                byte[] data = pictureData.getData();
+                int pictureType = pictureData.getPictureType();
+                String filename = pictureData.getFileName();
+                
+                destRun.addPicture(
+                    new ByteArrayInputStream(data),
+                    pictureType,
+                    filename,
+                    Units.toEMU(picture.getWidth()),
+                    Units.toEMU(picture.getHeight())
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void copyTable(XWPFTable sourceTable, XWPFTable destTable) {
+        // Clear existing rows in destination table
+        for (int i = destTable.getNumberOfRows() - 1; i >= 0; i--) {
+            destTable.removeRow(i);
+        }
+        
+        // Copy rows
+        for (XWPFTableRow sourceRow : sourceTable.getRows()) {
+            XWPFTableRow destRow = destTable.createRow();
+            copyTableRow(sourceRow, destRow);
+        }
+    }
+
+    private static void copyTableRow(XWPFTableRow sourceRow, XWPFTableRow destRow) {
+        // Copy cells
+        for (XWPFTableCell sourceCell : sourceRow.getTableCells()) {
+            XWPFTableCell destCell = destRow.createCell();
+            copyTableCell(sourceCell, destCell);
+        }
+    }
+
+    private static void copyTableCell(XWPFTableCell sourceCell, XWPFTableCell destCell) {
+        // Copy cell content
+        for (IBodyElement element : sourceCell.getBodyElements()) {
+            if (element instanceof XWPFParagraph) {
+                XWPFParagraph sourcePara = (XWPFParagraph) element;
+                XWPFParagraph destPara = destCell.addParagraph();
+                copyParagraph(sourcePara, destPara);
+            } else if (element instanceof XWPFTable) {
+                XWPFTable sourceTable = (XWPFTable) element;
+                XWPFTable destTable = destCell.addTable();
+                copyTable(sourceTable, destTable);
+            }
+        }
     }
 }
