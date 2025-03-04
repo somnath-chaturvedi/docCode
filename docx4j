@@ -1,0 +1,103 @@
+import java.io.File;
+import java.util.List;
+
+import org.docx4j.XmlUtils;
+import org.docx4j.openpackaging.exceptions.Docx4JException;
+import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart;
+import org.docx4j.openpackaging.parts.WordprocessingML.FooterPart;
+import org.docx4j.openpackaging.parts.WordprocessingML.HeaderPart;
+import org.docx4j.wml.*;
+
+public class MergeDocsFullPreserve {
+    public static void main(String[] args) throws Exception {
+        // Load the first document (destination)
+        WordprocessingMLPackage doc1 = WordprocessingMLPackage.load(new File("doc1.docx"));
+        MainDocumentPart mainPart1 = doc1.getMainDocumentPart();
+
+        // Load the second document (source)
+        WordprocessingMLPackage doc2 = WordprocessingMLPackage.load(new File("doc2.docx"));
+        MainDocumentPart mainPart2 = doc2.getMainDocumentPart();
+
+        // Import styles, headers, footers, and relationships properly
+        importStyles(doc1, doc2);
+        importHeadersAndFooters(doc1, doc2);
+        importRelationships(doc1, doc2);
+
+        // Merge content while preserving section breaks
+        mergeContentWithSectionBreak(doc1, doc2);
+
+        // Save the merged document
+        doc1.save(new File("merged.docx"));
+        System.out.println("Documents merged successfully with full preservation!");
+    }
+
+    private static void importStyles(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
+        StyleDefinitionsPart styles1 = doc1.getMainDocumentPart().getStyleDefinitionsPart();
+        StyleDefinitionsPart styles2 = doc2.getMainDocumentPart().getStyleDefinitionsPart();
+
+        if (styles1 == null || styles2 == null) return;
+
+        Styles styles1Content = styles1.getJaxbElement();
+        Styles styles2Content = styles2.getJaxbElement();
+
+        // Add missing styles from doc2 to doc1
+        for (Style style : styles2Content.getStyle()) {
+            if (!styleExists(style.getStyleId(), styles1Content)) {
+                styles1Content.getStyle().add(style);
+            }
+        }
+    }
+
+    private static boolean styleExists(String styleId, Styles styles) {
+        for (Style style : styles.getStyle()) {
+            if (style.getStyleId().equals(styleId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void importHeadersAndFooters(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Exception {
+        // Import headers
+        for (HeaderPart headerPart : doc2.getParts().getPartsOfType(HeaderPart.class)) {
+            doc1.getParts().addPart(headerPart);
+        }
+
+        // Import footers
+        for (FooterPart footerPart : doc2.getParts().getPartsOfType(FooterPart.class)) {
+            doc1.getParts().addPart(footerPart);
+        }
+    }
+
+    private static void importRelationships(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
+        doc1.getMainDocumentPart().getRelationshipsPart().importRelationships(
+                doc2.getMainDocumentPart().getRelationshipsPart());
+    }
+
+    private static void mergeContentWithSectionBreak(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
+        MainDocumentPart mainPart1 = doc1.getMainDocumentPart();
+        MainDocumentPart mainPart2 = doc2.getMainDocumentPart();
+
+        // Add section break before appending content
+        P sectionBreak = createSectionBreak();
+        mainPart1.addObject(sectionBreak);
+
+        // Deep copy content while preserving formatting
+        List<Object> content2 = mainPart2.getContent();
+        for (Object obj : content2) {
+            Object importedObj = XmlUtils.deepCopy(obj);
+            mainPart1.addObject(importedObj);
+        }
+    }
+
+    private static P createSectionBreak() {
+        P paragraph = new P();
+        SectPr sectPr = new SectPr();
+        PPr ppr = new PPr();
+        ppr.setSectPr(sectPr);
+        paragraph.setPPr(ppr);
+        return paragraph;
+    }
+}
