@@ -5,9 +5,9 @@ import org.docx4j.XmlUtils;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
-import org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart;
 import org.docx4j.openpackaging.parts.WordprocessingML.FooterPart;
 import org.docx4j.openpackaging.parts.WordprocessingML.HeaderPart;
+import org.docx4j.openpackaging.parts.relationships.Relationship;
 import org.docx4j.wml.*;
 
 public class MergeDocsFullPreserve {
@@ -34,18 +34,17 @@ public class MergeDocsFullPreserve {
     }
 
     private static void importStyles(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
-        StyleDefinitionsPart styles1 = doc1.getMainDocumentPart().getStyleDefinitionsPart();
-        StyleDefinitionsPart styles2 = doc2.getMainDocumentPart().getStyleDefinitionsPart();
+        if (doc1.getMainDocumentPart().getStyleDefinitionsPart() == null ||
+            doc2.getMainDocumentPart().getStyleDefinitionsPart() == null) {
+            return; // No styles to merge
+        }
 
-        if (styles1 == null || styles2 == null) return;
+        Styles styles1 = doc1.getMainDocumentPart().getStyleDefinitionsPart().getJaxbElement();
+        Styles styles2 = doc2.getMainDocumentPart().getStyleDefinitionsPart().getJaxbElement();
 
-        Styles styles1Content = styles1.getJaxbElement();
-        Styles styles2Content = styles2.getJaxbElement();
-
-        // Add missing styles from doc2 to doc1
-        for (Style style : styles2Content.getStyle()) {
-            if (!styleExists(style.getStyleId(), styles1Content)) {
-                styles1Content.getStyle().add(style);
+        for (Style style : styles2.getStyle()) {
+            if (!styleExists(style.getStyleId(), styles1)) {
+                styles1.getStyle().add(style);
             }
         }
     }
@@ -60,20 +59,23 @@ public class MergeDocsFullPreserve {
     }
 
     private static void importHeadersAndFooters(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Exception {
-        // Import headers
         for (HeaderPart headerPart : doc2.getParts().getPartsOfType(HeaderPart.class)) {
-            doc1.getParts().addPart(headerPart);
+            HeaderPart importedHeader = new HeaderPart();
+            importedHeader.setJaxbElement(XmlUtils.deepCopy(headerPart.getJaxbElement()));
+            doc1.getParts().addPart(importedHeader);
         }
 
-        // Import footers
         for (FooterPart footerPart : doc2.getParts().getPartsOfType(FooterPart.class)) {
-            doc1.getParts().addPart(footerPart);
+            FooterPart importedFooter = new FooterPart();
+            importedFooter.setJaxbElement(XmlUtils.deepCopy(footerPart.getJaxbElement()));
+            doc1.getParts().addPart(importedFooter);
         }
     }
 
     private static void importRelationships(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
-        doc1.getMainDocumentPart().getRelationshipsPart().importRelationships(
-                doc2.getMainDocumentPart().getRelationshipsPart());
+        for (Relationship rel : doc2.getMainDocumentPart().getRelationshipsPart().getRelationships().getRelationship()) {
+            doc1.getMainDocumentPart().getRelationshipsPart().addRelationship(rel);
+        }
     }
 
     private static void mergeContentWithSectionBreak(WordprocessingMLPackage doc1, WordprocessingMLPackage doc2) throws Docx4JException {
