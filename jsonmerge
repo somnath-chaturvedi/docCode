@@ -1,0 +1,310 @@
+package com.playground.figuringout.service;
+
+import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.openpackaging.parts.WordprocessingML.NumberingDefinitionsPart;
+import org.docx4j.wml.*;
+import org.json.JSONObject;
+import org.json.JSONArray;
+
+import javax.xml.bind.JAXBElement;
+import java.io.File;
+import java.math.BigInteger;
+import java.util.List;
+
+public class DocxGenerator {
+    private final ObjectFactory factory;
+    private final WordprocessingMLPackage wordPackage;
+    private NumberingDefinitionsPart numberingPart;
+
+    public DocxGenerator() throws Exception {
+        this.factory = new ObjectFactory();
+        this.wordPackage = WordprocessingMLPackage.createPackage();
+        setupNumbering();
+    }
+
+    private void setupNumbering() throws Exception {
+        numberingPart = new NumberingDefinitionsPart();
+        wordPackage.getMainDocumentPart().addTargetPart(numberingPart);
+        Numbering numbering = factory.createNumbering();
+        numberingPart.setJaxbElement(numbering);
+    }
+
+    public void generateFromJson(String jsonContent, String outputPath) throws Exception {
+        JSONObject json = new JSONObject(jsonContent);
+        MainDocumentPart mainDocumentPart = wordPackage.getMainDocumentPart();
+        processJsonContent(json, mainDocumentPart.getContent());
+        wordPackage.save(new File(outputPath));
+    }
+
+    private void processJsonContent(JSONObject json, List<Object> documentContent) {
+        if (json.has("w:p")) {
+            processParagraph(json.getJSONObject("w:p"), documentContent);
+        } else if (json.has("w:tbl")) {
+            processTable(json.getJSONObject("w:tbl"), documentContent);
+        }
+    }
+
+    private void processTable(JSONObject tableJson, List<Object> documentContent) {
+        Tbl table = factory.createTbl();
+        
+        // Process table properties
+        if (tableJson.has("w:tblPr")) {
+            TblPr tblPr = factory.createTblPr();
+            JSONObject tblPrJson = tableJson.getJSONObject("w:tblPr");
+            
+            // Handle table width
+            if (tblPrJson.has("w:tblW")) {
+                JSONObject tblW = tblPrJson.getJSONObject("w:tblW");
+                TblWidth width = factory.createTblWidth();
+                if (tblW.has("w:w")) {
+                    width.setW(BigInteger.valueOf(tblW.getInt("w:w")));
+                }
+                if (tblW.has("w:type")) {
+                    width.setType(tblW.getString("w:type"));
+                }
+                tblPr.setTblW(width);
+            }
+            
+            // Handle table style
+            if (tblPrJson.has("w:tblStyle")) {
+                String styleVal = tblPrJson.getJSONObject("w:tblStyle").getString("w:val");
+                CTTblPrBase.TblStyle tblStyle = factory.createCTTblPrBaseTblStyle();
+                tblStyle.setVal(styleVal);
+                tblPr.setTblStyle(tblStyle);
+            }
+            
+            table.setTblPr(tblPr);
+        }
+        
+        // Process table grid
+        if (tableJson.has("w:tblGrid")) {
+            TblGrid tblGrid = factory.createTblGrid();
+            JSONObject gridJson = tableJson.getJSONObject("w:tblGrid");
+            
+            if (gridJson.has("w:gridCol")) {
+                Object gridCols = gridJson.get("w:gridCol");
+                if (gridCols instanceof JSONArray) {
+                    JSONArray cols = (JSONArray) gridCols;
+                    for (int i = 0; i < cols.length(); i++) {
+                        TblGridCol gridCol = factory.createTblGridCol();
+                        gridCol.setW(BigInteger.valueOf(cols.getJSONObject(i).getInt("w:w")));
+                        tblGrid.getGridCol().add(gridCol);
+                    }
+                }
+            }
+            
+            table.setTblGrid(tblGrid);
+        }
+        
+        // Process rows
+        if (tableJson.has("w:tr")) {
+            Object rowContent = tableJson.get("w:tr");
+            if (rowContent instanceof JSONArray) {
+                JSONArray rows = (JSONArray) rowContent;
+                for (int i = 0; i < rows.length(); i++) {
+                    processTableRow(table, rows.getJSONObject(i));
+                }
+            } else if (rowContent instanceof JSONObject) {
+                processTableRow(table, (JSONObject) rowContent);
+            }
+        }
+        
+        documentContent.add(table);
+    }
+
+    private void processTableRow(Tbl table, JSONObject rowJson) {
+        Tr row = factory.createTr();
+        
+        // Process cells
+        if (rowJson.has("w:tc")) {
+            Object cellContent = rowJson.get("w:tc");
+            if (cellContent instanceof JSONArray) {
+                JSONArray cells = (JSONArray) cellContent;
+                for (int i = 0; i < cells.length(); i++) {
+                    processTableCell(row, cells.getJSONObject(i));
+                }
+            } else if (cellContent instanceof JSONObject) {
+                processTableCell(row, (JSONObject) cellContent);
+            }
+        }
+        
+        table.getContent().add(row);
+    }
+
+    private void processTableCell(Tr row, JSONObject cellJson) {
+        Tc cell = factory.createTc();
+        
+        // Process cell properties
+        if (cellJson.has("w:tcPr")) {
+            TcPr tcPr = factory.createTcPr();
+            JSONObject tcPrJson = cellJson.getJSONObject("w:tcPr");
+            
+            // Handle cell width
+            if (tcPrJson.has("w:tcW")) {
+                JSONObject tcW = tcPrJson.getJSONObject("w:tcW");
+                TblWidth width = factory.createTblWidth();
+                width.setW(BigInteger.valueOf(tcW.getInt("w:w")));
+                width.setType(tcW.getString("w:type"));
+                tcPr.setTcW(width);
+            }
+            
+            cell.setTcPr(tcPr);
+        }
+        
+        // Process cell content (paragraphs)
+        if (cellJson.has("w:p")) {
+            Object paraContent = cellJson.get("w:p");
+            if (paraContent instanceof JSONArray) {
+                JSONArray paragraphs = (JSONArray) paraContent;
+                for (int i = 0; i < paragraphs.length(); i++) {
+                    processParagraph(paragraphs.getJSONObject(i), cell.getContent());
+                }
+            } else if (paraContent instanceof JSONObject) {
+                processParagraph((JSONObject) paraContent, cell.getContent());
+            }
+        }
+        
+        row.getContent().add(cell);
+    }
+
+    private void processParagraph(JSONObject pProps, List<Object> documentContent) {
+        P paragraph = factory.createP();
+        
+        // Process paragraph properties
+        if (pProps.has("w:pPr")) {
+            PPr pPr = processParagraphProperties(pProps.getJSONObject("w:pPr"));
+            paragraph.setPPr(pPr);
+        }
+        
+        // Process runs
+        if (pProps.has("w:r")) {
+            Object rContent = pProps.get("w:r");
+            if (rContent instanceof JSONArray) {
+                JSONArray runs = (JSONArray) rContent;
+                for (int i = 0; i < runs.length(); i++) {
+                    addRun(paragraph, runs.getJSONObject(i));
+                }
+            } else if (rContent instanceof JSONObject) {
+                addRun(paragraph, (JSONObject) rContent);
+            }
+        }
+        
+        documentContent.add(paragraph);
+    }
+
+    private PPr processParagraphProperties(JSONObject pPrJson) {
+        PPr pPr = factory.createPPr();
+        
+        // Handle alignment
+        if (pPrJson.has("w:jc")) {
+            Jc jc = factory.createJc();
+            jc.setVal(JcEnumeration.fromValue(pPrJson.getJSONObject("w:jc").getString("w:val")));
+            pPr.setJc(jc);
+        }
+
+        // Handle spacing
+        if (pPrJson.has("w:spacing")) {
+            PPrBase.Spacing spacing = factory.createPPrBaseSpacing();
+            JSONObject spacingJson = pPrJson.getJSONObject("w:spacing");
+            if (spacingJson.has("w:before")) {
+                spacing.setBefore(BigInteger.valueOf(spacingJson.getInt("w:before")));
+            }
+            if (spacingJson.has("w:after")) {
+                spacing.setAfter(BigInteger.valueOf(spacingJson.getInt("w:after")));
+            }
+            if (spacingJson.has("w:line")) {
+                spacing.setLine(BigInteger.valueOf(spacingJson.getInt("w:line")));
+            }
+            pPr.setSpacing(spacing);
+        }
+
+        // Handle indentation
+        if (pPrJson.has("w:ind")) {
+            PPrBase.Ind ind = factory.createPPrBaseInd();
+            JSONObject indJson = pPrJson.getJSONObject("w:ind");
+            if (indJson.has("w:left")) {
+                ind.setLeft(BigInteger.valueOf(indJson.getInt("w:left")));
+            }
+            if (indJson.has("w:right")) {
+                ind.setRight(BigInteger.valueOf(indJson.getInt("w:right")));
+            }
+            if (indJson.has("w:firstLine")) {
+                ind.setFirstLine(BigInteger.valueOf(indJson.getInt("w:firstLine")));
+            }
+            if (indJson.has("w:hanging")) {
+                ind.setHanging(BigInteger.valueOf(indJson.getInt("w:hanging")));
+            }
+            pPr.setInd(ind);
+        }
+        
+        return pPr;
+    }
+
+    private void addRun(P paragraph, JSONObject runJson) {
+        R run = factory.createR();
+        
+        // Process run properties
+        if (runJson.has("w:rPr")) {
+            RPr rPr = factory.createRPr();
+            JSONObject rPrJson = runJson.getJSONObject("w:rPr");
+            
+            // Handle text properties
+            if (rPrJson.has("w:b")) {
+                BooleanDefaultTrue bold = factory.createBooleanDefaultTrue();
+                bold.setVal(true);
+                rPr.setB(bold);
+            }
+            
+            // Handle font
+            if (rPrJson.has("w:rFonts")) {
+                RFonts rFonts = factory.createRFonts();
+                JSONObject fontsJson = rPrJson.getJSONObject("w:rFonts");
+                if (fontsJson.has("w:ascii")) {
+                    rFonts.setAscii(fontsJson.getString("w:ascii"));
+                }
+                if (fontsJson.has("w:hAnsi")) {
+                    rFonts.setHAnsi(fontsJson.getString("w:hAnsi"));
+                }
+                if (fontsJson.has("w:eastAsia")) {
+                    rFonts.setEastAsia(fontsJson.getString("w:eastAsia"));
+                }
+                if (fontsJson.has("w:cs")) {
+                    rFonts.setCs(fontsJson.getString("w:cs"));
+                }
+                rPr.setRFonts(rFonts);
+            }
+
+            // Handle font size
+            if (rPrJson.has("w:sz")) {
+                HpsMeasure sz = factory.createHpsMeasure();
+                sz.setVal(BigInteger.valueOf(rPrJson.getJSONObject("w:sz").getInt("w:val")));
+                rPr.setSz(sz);
+            }
+
+            // Handle color
+            if (rPrJson.has("w:color")) {
+                Color color = factory.createColor();
+                color.setVal(rPrJson.getJSONObject("w:color").getString("w:val"));
+                rPr.setColor(color);
+            }
+            
+            run.setRPr(rPr);
+        }
+        
+        // Process text content
+        if (runJson.has("w:t")) {
+            Object textContent = runJson.get("w:t");
+            Text text = factory.createText();
+            if (textContent instanceof String) {
+                text.setValue((String) textContent);
+            } else if (textContent instanceof Integer) {
+                text.setValue(String.valueOf(textContent));
+            }
+            JAXBElement<Text> textElement = factory.createRT(text);
+            run.getContent().add(textElement);
+        }
+        
+        paragraph.getContent().add(run);
+    }
+} 
