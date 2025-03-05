@@ -1,0 +1,57 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.poi.xwpf.converter.pdf.PdfConverter;
+import org.apache.poi.xwpf.converter.pdf.PdfOptions;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+
+public class DocxToPdfMerger {
+
+    public static void mergeDocxStreamsToPdf(List<InputStream> docxStreams, OutputStream pdfOutput) throws IOException {
+        List<PDDocument> pdfDocuments = new ArrayList<>();
+        
+        try {
+            for (InputStream docxStream : docxStreams) {
+                // Convert DOCX to PDF bytes
+                XWPFDocument document = new XWPFDocument(docxStream);
+                ByteArrayOutputStream pdfByteStream = new ByteArrayOutputStream();
+                PdfOptions options = PdfOptions.create();
+                PdfConverter.getInstance().convert(document, pdfByteStream, options);
+                document.close();
+                
+                // Load PDF bytes into PDDocument
+                byte[] pdfBytes = pdfByteStream.toByteArray();
+                PDDocument pdfDoc = PDDocument.load(new ByteArrayInputStream(pdfBytes));
+                pdfDocuments.add(pdfDoc);
+            }
+            
+            // Merge all PDF documents
+            PDDocument mergedPdf = new PDDocument();
+            try {
+                for (PDDocument pdfDoc : pdfDocuments) {
+                    for (PDPage page : pdfDoc.getPages()) {
+                        mergedPdf.importPage(page);
+                    }
+                    pdfDoc.close();
+                }
+                mergedPdf.save(pdfOutput);
+            } finally {
+                mergedPdf.close();
+            }
+        } finally {
+            // Ensure all PDDocuments are closed
+            for (PDDocument pdfDoc : pdfDocuments) {
+                if (!pdfDoc.isClosed()) {
+                    pdfDoc.close();
+                }
+            }
+        }
+    }
+}
