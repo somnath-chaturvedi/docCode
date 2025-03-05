@@ -1,121 +1,92 @@
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.*;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import org.json.*;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.math.BigInteger;
 import java.util.Iterator;
 
-public class MergeJsonToDocx {
-
+public class MergeDocxJson {
     public static void main(String[] args) throws Exception {
-        // Load JSON files
         JSONObject json1 = new JSONObject(new String(Files.readAllBytes(Paths.get("doc1.json"))));
         JSONObject json2 = new JSONObject(new String(Files.readAllBytes(Paths.get("doc2.json"))));
 
-        // Create a new Word document
         WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.createPackage();
 
-        // Merge JSON data dynamically
         mergeJsonToDocx(json1, wordMLPackage);
         mergeJsonToDocx(json2, wordMLPackage);
 
-        // Save merged document
         wordMLPackage.save(new File("merged.docx"));
         System.out.println("Merged DOCX created successfully!");
     }
 
     private static void mergeJsonToDocx(JSONObject json, WordprocessingMLPackage wordMLPackage) {
-        if (json.has("document")) {
-            JSONObject document = json.getJSONObject("document");
-
-            // Handle headers
-            if (document.has("headers")) {
-                JSONArray headers = document.getJSONArray("headers");
-                for (int i = 0; i < headers.length(); i++) {
-                    addParagraph(headers.getJSONObject(i), wordMLPackage, true);
+        if (json.has("body")) {
+            JSONObject body = json.getJSONObject("body");
+            if (body.has("p")) {
+                JSONArray paragraphs = body.getJSONArray("p");
+                for (int i = 0; i < paragraphs.length(); i++) {
+                    addParagraph(paragraphs.getJSONObject(i), wordMLPackage);
                 }
             }
-
-            // Handle body content
-            if (document.has("body")) {
-                JSONArray body = document.getJSONArray("body");
-                for (int i = 0; i < body.length(); i++) {
-                    addParagraph(body.getJSONObject(i), wordMLPackage, false);
-                }
-            }
-
-            // Handle footers
-            if (document.has("footers")) {
-                JSONArray footers = document.getJSONArray("footers");
-                for (int i = 0; i < footers.length(); i++) {
-                    addParagraph(footers.getJSONObject(i), wordMLPackage, true);
-                }
+            if (body.has("sectPr")) {
+                applySectionProperties(body.getJSONObject("sectPr"), wordMLPackage);
             }
         }
     }
 
-    private static void addParagraph(JSONObject json, WordprocessingMLPackage wordMLPackage, boolean isHeaderFooter) {
+    private static void addParagraph(JSONObject json, WordprocessingMLPackage wordMLPackage) {
         ObjectFactory factory = new ObjectFactory();
         P paragraph = factory.createP();
         R run = factory.createR();
         Text text = factory.createText();
-
-        if (json.has("text")) {
-            text.setValue(json.getString("text"));
+        
+        if (json.has("t")) {
+            text.setValue(json.getString("t"));
         }
-
+        if (json.has("space")) {
+            text.setSpace(json.getString("space"));
+        }
         run.getContent().add(text);
         paragraph.getContent().add(run);
 
-        // Apply styles if available
-        if (json.has("style")) {
+        if (json.has("ppr")) {
             PPr ppr = factory.createPPr();
-            PStyle pStyle = factory.createPStyle();
-            pStyle.setVal(json.getString("style"));
-            ppr.setPStyle(pStyle);
-            paragraph.setPPr(ppr);
-        }
-
-        // Apply indentation if available
-        if (json.has("indentation")) {
-            PPr ppr = paragraph.getPPr() != null ? paragraph.getPPr() : factory.createPPr();
-            Ind ind = factory.createInd();
-            ind.setLeft(BigInteger.valueOf(json.getInt("indentation")));
-            ppr.setInd(ind);
-            paragraph.setPPr(ppr);
-        }
-
-        // Handle bullet points and numbered points
-        if (json.has("listType")) {
-            String listType = json.getString("listType");
-            if (listType.equals("bullet")) {
-                // Apply bullet styling
-                PPr ppr = paragraph.getPPr() != null ? paragraph.getPPr() : factory.createPPr();
-                NumPr numPr = factory.createPPrBaseNumPr();
-                numPr.setIlvl(factory.createPPrBaseNumPrIlvl());
-                numPr.getIlvl().setVal(BigInteger.ZERO);
-                numPr.setNumId(factory.createPPrBaseNumPrNumId());
-                numPr.getNumId().setVal(BigInteger.valueOf(1)); // Bullet list
-                ppr.setNumPr(numPr);
-                paragraph.setPPr(ppr);
-            } else if (listType.equals("numbered")) {
-                // Apply numbered styling
-                PPr ppr = paragraph.getPPr() != null ? paragraph.getPPr() : factory.createPPr();
-                NumPr numPr = factory.createPPrBaseNumPr();
-                numPr.setIlvl(factory.createPPrBaseNumPrIlvl());
-                numPr.getIlvl().setVal(BigInteger.ZERO);
-                numPr.setNumId(factory.createPPrBaseNumPrNumId());
-                numPr.getNumId().setVal(BigInteger.valueOf(2)); // Numbered list
-                ppr.setNumPr(numPr);
-                paragraph.setPPr(ppr);
+            if (json.getJSONObject("ppr").has("ind")) {
+                Ind ind = factory.createInd();
+                ind.setLeft(BigInteger.valueOf(json.getJSONObject("ppr").getInt("ind")));
+                ppr.setInd(ind);
             }
+            paragraph.setPPr(ppr);
         }
-
-        // Add paragraph to document
+        
         wordMLPackage.getMainDocumentPart().addObject(paragraph);
+    }
+
+    private static void applySectionProperties(JSONObject sectPr, WordprocessingMLPackage wordMLPackage) {
+        ObjectFactory factory = new ObjectFactory();
+        SectPr sectionProperties = factory.createSectPr();
+        if (sectPr.has("pgSz")) {
+            SectPr.PgSz pgSz = factory.createSectPrPgSz();
+            pgSz.setW(BigInteger.valueOf(sectPr.getJSONObject("pgSz").getInt("w")));
+            pgSz.setH(BigInteger.valueOf(sectPr.getJSONObject("pgSz").getInt("h")));
+            if (sectPr.getJSONObject("pgSz").has("orient")) {
+                pgSz.setOrient(STPageOrientation.fromValue(sectPr.getJSONObject("pgSz").getString("orient")));
+            }
+            sectionProperties.setPgSz(pgSz);
+        }
+        
+        if (sectPr.has("pgMar")) {
+            SectPr.PgMar pgMar = factory.createSectPrPgMar();
+            pgMar.setTop(BigInteger.valueOf(sectPr.getJSONObject("pgMar").getInt("top")));
+            pgMar.setBottom(BigInteger.valueOf(sectPr.getJSONObject("pgMar").getInt("bottom")));
+            pgMar.setLeft(BigInteger.valueOf(sectPr.getJSONObject("pgMar").getInt("left")));
+            pgMar.setRight(BigInteger.valueOf(sectPr.getJSONObject("pgMar").getInt("right")));
+            sectionProperties.setPgMar(pgMar);
+        }
+        
+        wordMLPackage.getMainDocumentPart().addObject(sectionProperties);
     }
 }
