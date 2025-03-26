@@ -1,0 +1,19 @@
+String tocPlaceholder =
+    "<w:sdt xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+    + "  <w:sdtPr>"
+    + "    <w:docPartObj>"
+    + "      <w:docPartGallery w:val=\"Table of Contents\"/>"
+    + "    </w:docPartObj>"
+    + "  </w:sdtPr>"
+    + "  <w:sdtContent>"
+    + "    <w:p>"
+    + "      <w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+    + "      <w:r><w:instrText xml:space=\"preserve\">TOC \\o \"1-3\" \\h \\z \\u</w:instrText></w:r>"
+    + "      <w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>"
+    + "      <w:r><w:t>Loading...</w:t></w:r>"
+    + "      <w:r><w:fldChar w:fldCharType=\"end\"/></w:r>"
+    + "    </w:p>"
+    + "  </w:sdtContent>"
+    + "</w:sdt>";
+
+documentPart.addObject(org.docx4j.XmlUtils.unmarshalString(tocPlaceholder));
