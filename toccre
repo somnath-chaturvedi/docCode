@@ -1,19 +1,60 @@
-String tocPlaceholder =
-    "<w:sdt xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-    + "  <w:sdtPr>"
-    + "    <w:docPartObj>"
-    + "      <w:docPartGallery w:val=\"Table of Contents\"/>"
-    + "    </w:docPartObj>"
-    + "  </w:sdtPr>"
-    + "  <w:sdtContent>"
-    + "    <w:p>"
-    + "      <w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
-    + "      <w:r><w:instrText xml:space=\"preserve\">TOC \\o \"1-3\" \\h \\z \\u</w:instrText></w:r>"
-    + "      <w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>"
-    + "      <w:r><w:t>Loading...</w:t></w:r>"
-    + "      <w:r><w:fldChar w:fldCharType=\"end\"/></w:r>"
-    + "    </w:p>"
-    + "  </w:sdtContent>"
-    + "</w:sdt>";
+import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.wml.*;
 
-documentPart.addObject(org.docx4j.XmlUtils.unmarshalString(tocPlaceholder));
+public class ModifyTOCStyles {
+    public static void main(String[] args) throws Exception {
+        // Load the .docx file
+        WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new java.io.File("input.docx"));
+
+        // Get the Styles part
+        org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart stylesPart = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart();
+        Styles styles = stylesPart.getJaxbElement();
+
+        // Modify TOC1 Style (First level of TOC)
+        modifyTOCStyle(styles, "TOC1", "Arial", "24", "0000FF", true);
+
+        // Modify TOC2 Style (Second level of TOC)
+        modifyTOCStyle(styles, "TOC2", "Calibri", "20", "FF0000", false);
+
+        // Save the modified document
+        wordMLPackage.save(new java.io.File("output.docx"));
+    }
+
+    private static void modifyTOCStyle(Styles styles, String styleId, String font, String fontSize, String color, boolean bold) {
+        for (Style style : styles.getStyle()) {
+            if (style.getStyleId().equals(styleId)) {
+                // Modify Run Properties (Font, Size, Color, Bold)
+                RPr rPr = style.getRPr();
+                if (rPr == null) {
+                    rPr = new RPr();
+                    style.setRPr(rPr);
+                }
+
+                // Set font
+                RFonts rFonts = new RFonts();
+                rFonts.setAscii(font);
+                rPr.setRFonts(rFonts);
+
+                // Set font size (Half-points, so multiply by 2)
+                HpsMeasure size = new HpsMeasure();
+                size.setVal(new java.math.BigInteger(fontSize));
+                rPr.setSz(size);
+
+                // Set font color
+                Color colorObj = new Color();
+                colorObj.setVal(color);
+                rPr.setColor(colorObj);
+
+                // Set bold
+                if (bold) {
+                    BooleanDefaultTrue b = new BooleanDefaultTrue();
+                    b.setVal(true);
+                    rPr.setB(b);
+                } else {
+                    rPr.setB(null);
+                }
+                break;
+            }
+        }
+    }
+}
