@@ -1,7 +1,9 @@
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.*;
 
-public class ModifyTOCStyles {
+import java.math.BigInteger;
+
+public class ModifyTOCTabSpacing {
     public static void main(String[] args) throws Exception {
         // Load the .docx file
         WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(new java.io.File("input.docx"));
@@ -10,17 +12,17 @@ public class ModifyTOCStyles {
         org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart stylesPart = wordMLPackage.getMainDocumentPart().getStyleDefinitionsPart();
         Styles styles = stylesPart.getJaxbElement();
 
-        // Modify TOC1 Style (First level of TOC)
-        modifyTOCStyle(styles, "TOC1", "Arial", "24", "0000FF", true);
+        // Modify TOC1 (First-level TOC style)
+        modifyTOCStyle(styles, "TOC1", "Arial", "24", "0000FF", true, 200, 300, 300, 500, 14400);
 
-        // Modify TOC2 Style (Second level of TOC)
-        modifyTOCStyle(styles, "TOC2", "Calibri", "20", "FF0000", false);
+        // Modify TOC2 (Second-level TOC style)
+        modifyTOCStyle(styles, "TOC2", "Calibri", "20", "FF0000", false, 150, 250, 400, 500, 14400);
 
         // Save the modified document
         wordMLPackage.save(new java.io.File("output.docx"));
     }
 
-    private static void modifyTOCStyle(Styles styles, String styleId, String font, String fontSize, String color, boolean bold) {
+    private static void modifyTOCStyle(Styles styles, String styleId, String font, String fontSize, String color, boolean bold, int beforeSpacing, int afterSpacing, int leftIndent, int rightIndent, int tabStopPosition) {
         for (Style style : styles.getStyle()) {
             if (style.getStyleId().equals(styleId)) {
                 // Modify Run Properties (Font, Size, Color, Bold)
@@ -37,7 +39,7 @@ public class ModifyTOCStyles {
 
                 // Set font size (Half-points, so multiply by 2)
                 HpsMeasure size = new HpsMeasure();
-                size.setVal(new java.math.BigInteger(fontSize));
+                size.setVal(new BigInteger(fontSize));
                 rPr.setSz(size);
 
                 // Set font color
@@ -53,6 +55,35 @@ public class ModifyTOCStyles {
                 } else {
                     rPr.setB(null);
                 }
+
+                // Modify Paragraph Properties (Spacing & Indentation)
+                PPr pPr = style.getPPr();
+                if (pPr == null) {
+                    pPr = new PPr();
+                    style.setPPr(pPr);
+                }
+
+                // Set spacing before & after paragraphs
+                Spacing spacing = new Spacing();
+                spacing.setBefore(new BigInteger(String.valueOf(beforeSpacing))); // Space before in twips
+                spacing.setAfter(new BigInteger(String.valueOf(afterSpacing)));   // Space after in twips
+                pPr.setSpacing(spacing);
+
+                // Set indentation
+                Ind ind = new Ind();
+                ind.setLeft(new BigInteger(String.valueOf(leftIndent)));  // Left indent in twips
+                ind.setRight(new BigInteger(String.valueOf(rightIndent))); // Right indent in twips
+                pPr.setInd(ind);
+
+                // Add tab stop for page number alignment
+                Tabs tabs = new Tabs();
+                TabStop tabStop = new TabStop();
+                tabStop.setVal(STTabJc.RIGHT); // Right align page numbers
+                tabStop.setLeader(STTabTlc.DOT); // Dot leader (....)
+                tabStop.setPos(new BigInteger(String.valueOf(tabStopPosition))); // Set tab stop position
+                tabs.getTab().add(tabStop);
+                pPr.setTabs(tabs);
+
                 break;
             }
         }
