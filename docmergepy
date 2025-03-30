@@ -3,6 +3,36 @@ from docx import Document
 from docx.shared import Pt
 from docxcompose.composer import Composer
 
+from docx import Document
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
+
+def add_section_break(doc):
+    """Adds a section break (next page) at the end of a document."""
+    section_break = parse_xml(
+        r'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        r'  <w:pPr>'
+        r'    <w:sectPr>'
+        r'      <w:type w:val="nextPage"/>'
+        r'    </w:sectPr>'
+        r'  </w:pPr>'
+        r'</w:p>'
+    )
+    doc._element.body.append(section_break)
+
+# Create a new document
+doc = Document()
+doc.add_paragraph("First section content.")
+
+# Add a section break
+add_section_break(doc)
+
+doc.add_paragraph("Second section content.")
+
+# Save the document
+doc.save("section_break.docx")
+
+
 def add_heading(doc, text):
     """Adds a heading (folder name) to the document."""
     p = doc.add_paragraph()
