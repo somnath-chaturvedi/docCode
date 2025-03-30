@@ -1,0 +1,44 @@
+import os
+from docx import Document
+from docx.shared import Pt
+from docxcompose.composer import Composer
+
+def add_heading(doc, text):
+    """Adds a heading (folder name) to the document."""
+    p = doc.add_paragraph()
+    run = p.add_run(text)
+    run.bold = True
+    run.font.size = Pt(14)  # Adjust font size
+    return doc
+
+def merge_docx_files(input_folder, output_file):
+    """Merges multiple .docx files while keeping styles and section breaks."""
+    main_doc = Document()
+    composer = Composer(main_doc)
+
+    # Get sorted list of subfolders
+    subfolders = sorted([f.path for f in os.scandir(input_folder) if f.is_dir()])
+
+    for folder in subfolders:
+        folder_name = os.path.basename(folder)
+        docx_files = sorted([os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.docx')])
+
+        if docx_files:
+            # Add folder name as a heading
+            add_heading(main_doc, folder_name)
+
+            for file in docx_files:
+                print(f"Merging: {file}")
+                temp_doc = Document(file)
+                composer.append(temp_doc)  # Append document with full formatting
+
+                # Add a section break after each document to preserve styles
+                composer.document.add_page_break()
+
+    composer.save(output_file)
+    print(f"Merged document saved at: {output_file}")
+
+# Example Usage
+input_folder = "C:/your/docx/folder"  # Change to your folder path
+output_file = "C:/your/output/merged.docx"
+merge_docx_files(input_folder, output_file)
