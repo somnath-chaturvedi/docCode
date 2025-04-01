@@ -1,0 +1,54 @@
+from docx import Document
+import os
+
+def remove_numbering_to_text_with_indent(input_filename, output_filename):
+    doc = Document(input_filename)
+    
+    for para in doc.paragraphs:
+        if para.text.strip():
+            rendered_text = para.text
+            indent = None
+            if para.paragraph_format.left_indent:
+                indent = para.paragraph_format.left_indent  # Preserve indent
+            
+            para.clear()
+            para._element.clear_content()
+            
+            if para._element.pPr is not None:
+                num_pr = para._element.pPr.find('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numPr')
+                if num_pr is not None:
+                    para._element.pPr.remove(num_pr)
+            
+            run = para.add_run(rendered_text)
+            if indent:
+                para.paragraph_format.left_indent = indent  # Reapply indent
+    
+    # Handle tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    if para.text.strip():
+                        rendered_text = para.text
+                        indent = para.paragraph_format.left_indent
+                        
+                        para.clear()
+                        para._element.clear_content()
+                        
+                        if para._element.pPr is not None:
+                            num_pr = para._element.pPr.find('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numPr')
+                            if num_pr is not None:
+                                para._element.pPr.remove(num_pr)
+                        
+                        run = para.add_run(rendered_text)
+                        if indent:
+                            para.paragraph_format.left_indent = indent
+    
+    doc.save(output_filename)
+    print(f"Numbering converted to text with indentation and saved as: {output_filename}")
+
+# Example usage
+if __name__ == "__main__":
+    input_file = "numbered_document.docx"
+    output_file = "plain_text_with_indent_document.docx"
+    remove_numbering_to_text_with_indent(input_file, output_file)
