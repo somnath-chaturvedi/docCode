@@ -1,0 +1,62 @@
+import stomp
+import zipfile
+import io
+from pathlib import Path
+import time
+
+class BatchProcessor(stomp.ConnectionListener):
+    def on_message(self, headers, body):
+        try:
+            # 1. Process batch
+            batch_id = headers['batch-id']
+            print(f"Processing batch {batch_id}")
+            
+            # 2. Unzip files
+            input_zip = zipfile.ZipFile(io.BytesIO(body))
+            input_zip.extractall(f"processing/{batch_id}")
+            
+            # 3. Combine files (example: concatenate)
+            output_content = bytearray()
+            for file in input_zip.namelist():
+                with open(f"processing/{batch_id}/{file}", 'rb') as f:
+                    output_content += f.read()
+            
+            # 4. Create result ZIP
+            output_zip = io.BytesIO()
+            with zipfile.ZipFile(output_zip, 'w') as zf:
+                zf.writestr("combined.txt", output_content)
+            
+            # 5. Send response
+            self.conn.send(
+                destination=headers['reply-to'],
+                body=output_zip.getvalue(),
+                headers={
+                    'batch-id': batch_id,
+                    'status': 'success'
+                }
+            )
+            
+            # 6. Cleanup
+            Path(f"processing/{batch_id}").rmdir()
+            
+        except Exception as e:
+            self.conn.send(
+                destination=headers['reply-to'],
+                body=str(e).encode(),
+                headers={
+                    'batch-id': headers['batch-id'],
+                    'status': 'error'
+                }
+            )
+
+# Setup connection
+conn = stomp.Connection([('localhost', 61613)])
+processor = BatchProcessor()
+processor.conn = conn  # Pass connection reference
+conn.set_listener('', processor)
+conn.connect('admin', 'admin', wait=True)
+conn.subscribe(destination='/queue/batch.process', id=1, ack='client')
+
+print("Batch processor ready...")
+while True:
+    time.sleep(1)
