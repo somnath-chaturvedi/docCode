@@ -1,38 +1,41 @@
 @Configuration
-public class JettyConfig {
-    
+public class JettyConfiguration {
+
     @Bean
     public JettyServletWebServerFactory jettyServletWebServerFactory() {
         JettyServletWebServerFactory factory = new JettyServletWebServerFactory();
         factory.addServerCustomizers(server -> {
-            // Get the ServletContextHandler
-            ServletContextHandler handler = (ServletContextHandler) server.getHandler();
+            // Get the handler
+            Handler.Collection handlers = (Handler.Collection) server.getHandler();
             
-            // Create constraint security handler
-            ConstraintSecurityHandler constraintSecurityHandler = new ConstraintSecurityHandler();
-            
-            // Create constraint to disable TRACE
-            Constraint constraintDisableTrace = new Constraint();
-            constraintDisableTrace.setAuthenticate(true);
-            
-            ConstraintMapping mappingDisableTrace = new ConstraintMapping();
-            mappingDisableTrace.setPathSpec("/*");
-            mappingDisableTrace.setMethod("TRACE");
-            mappingDisableTrace.setConstraint(constraintDisableTrace);
-            
-            // Create constraint to enable everything but TRACE
-            Constraint constraintEnabledEverythingButTrace = new Constraint();
-            ConstraintMapping mappingEnableEverythingButTrace = new ConstraintMapping();
-            mappingEnableEverythingButTrace.setPathSpec("/*");
-            mappingEnableEverythingButTrace.setMethodOmissions(new String[]{"TRACE"});
-            mappingEnableEverythingButTrace.setConstraint(constraintEnabledEverythingButTrace);
-            
-            constraintSecurityHandler.addConstraintMapping(mappingDisableTrace);
-            constraintSecurityHandler.addConstraintMapping(mappingEnableEverythingButTrace);
-            
-            handler.setSecurityHandler(constraintSecurityHandler);
+            // Find the ServletContextHandler
+            for (Handler handler : handlers.getHandlers()) {
+                if (handler instanceof ServletContextHandler) {
+                    ServletContextHandler contextHandler = (ServletContextHandler) handler;
+                    
+                    // Create and configure security handler
+                    SecurityHandler securityHandler = new SecurityHandler();
+                    
+                    // Create constraint to disable TRACE
+                    Constraint traceConstraint = new Constraint.Builder()
+                        .authorization(Constraint.Authorization.FORBIDDEN)
+                        .build();
+                    
+                    // Map the constraint to TRACE method
+                    ConstraintMapping traceMapping = new ConstraintMapping();
+                    traceMapping.setPathSpec("/*");
+                    traceMapping.setMethod("TRACE");
+                    traceMapping.setConstraint(traceConstraint);
+                    
+                    // Add constraint mapping to security handler
+                    securityHandler.setConstraintMappings(List.of(traceMapping));
+                    
+                    // Set the security handler on the context
+                    contextHandler.setSecurityHandler(securityHandler);
+                    break;
+                }
+            }
         });
-        
         return factory;
     }
 }
