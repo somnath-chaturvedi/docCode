@@ -1,0 +1,38 @@
+@Configuration
+public class JettyConfig {
+    
+    @Bean
+    public JettyServletWebServerFactory jettyServletWebServerFactory() {
+        JettyServletWebServerFactory factory = new JettyServletWebServerFactory();
+        factory.addServerCustomizers(server -> {
+            // Get the ServletContextHandler
+            ServletContextHandler handler = (ServletContextHandler) server.getHandler();
+            
+            // Create constraint security handler
+            ConstraintSecurityHandler constraintSecurityHandler = new ConstraintSecurityHandler();
+            
+            // Create constraint to disable TRACE
+            Constraint constraintDisableTrace = new Constraint();
+            constraintDisableTrace.setAuthenticate(true);
+            
+            ConstraintMapping mappingDisableTrace = new ConstraintMapping();
+            mappingDisableTrace.setPathSpec("/*");
+            mappingDisableTrace.setMethod("TRACE");
+            mappingDisableTrace.setConstraint(constraintDisableTrace);
+            
+            // Create constraint to enable everything but TRACE
+            Constraint constraintEnabledEverythingButTrace = new Constraint();
+            ConstraintMapping mappingEnableEverythingButTrace = new ConstraintMapping();
+            mappingEnableEverythingButTrace.setPathSpec("/*");
+            mappingEnableEverythingButTrace.setMethodOmissions(new String[]{"TRACE"});
+            mappingEnableEverythingButTrace.setConstraint(constraintEnabledEverythingButTrace);
+            
+            constraintSecurityHandler.addConstraintMapping(mappingDisableTrace);
+            constraintSecurityHandler.addConstraintMapping(mappingEnableEverythingButTrace);
+            
+            handler.setSecurityHandler(constraintSecurityHandler);
+        });
+        
+        return factory;
+    }
+}
