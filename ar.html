@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Approval Report — Backbone.js</title>
+  <link rel="stylesheet" href="approval-report.css">
+</head>
+<body>
+  <div id="approvalReportApp">
+    <header class="ar-toolbar">
+      <span id="ar-selected-count">0 item(s) selected</span>
+      <div class="ar-actions">
+        <button id="ar-approve-btn" class="ar-btn ar-success" disabled>Approve</button>
+        <button id="ar-clarify-btn" class="ar-btn ar-outline" disabled>Request Clarification</button>
+      </div>
+    </header>
+
+    <main class="ar-report-container">
+      <table id="ar-report-table">
+        <thead>
+          <tr>
+            <th></th><th>Select</th><th>Response ID</th><th>Task Type</th>
+            <th>Survey Name</th><th>Controls</th><th>Responded By</th>
+            <th>Approver</th><th>Status</th><th>Questionnaire</th>
+            <th>Section</th><th>Question</th><th>Response</th>
+            <th>Comments</th><th>Certified</th><th>Certified By</th><th>Approver Comments</th>
+          </tr>
+        </thead>
+        <tbody id="ar-report-body"></tbody>
+      </table>
+    </main>
+
+    <!-- Modal -->
+    <div id="ar-dialog" class="ar-dialog ar-hidden">
+      <div class="ar-dialog-content">
+        <h3 id="ar-dialog-title"></h3>
+        <p id="ar-dialog-desc"></p>
+        <textarea id="ar-dialog-comments" rows="4"></textarea>
+        <div class="ar-dialog-actions">
+          <button id="ar-cancel-dialog" class="ar-btn ar-outline">Cancel</button>
+          <button id="ar-confirm-dialog" class="ar-btn">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.5.0/backbone-min.js"></script>
+  <script src="approval-report.js"></script>
+</body>
+</html>
