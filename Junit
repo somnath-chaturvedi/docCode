@@ -1,0 +1,39 @@
+Generate comprehensive JUnit 5 test cases for the [ClassName] class to achieve 100% line coverage. Follow these specific requirements:
+
+1. Test Coverage Requirements:
+   - Generate test cases for ALL methods in the class including public, private, protected, and package-private methods
+   - Generate test cases for static methods
+   - Ensure 100% line coverage across all code paths
+   - Cover all conditional branches (if-else, switch cases, ternary operators)
+   - Test exception handling scenarios and edge cases
+
+2. Private Method Testing:
+   - For private methods, use Java Reflection API (getDeclaredMethod, setAccessible(true), invoke)
+   - Ensure method arguments use wrapper classes (Integer, Boolean, etc.) instead of primitives for reflection compatibility
+   - Alternatively, if private methods contain significant logic, suggest extracting them to package-private helper methods for direct testing
+
+3. Test Structure:
+   - Use JUnit 5 annotations (@Test, @BeforeEach, @AfterEach, @BeforeAll, @AfterAll)
+   - Include appropriate assertions from org.junit.jupiter.api.Assertions
+   - Use @DisplayName annotations for clear test descriptions
+   - Group related tests using @Nested classes where appropriate
+
+4. Mocking and Dependencies:
+   - Use Mockito for mocking dependencies (@Mock, @InjectMocks annotations)
+   - Mock all external dependencies and database calls
+   - Use @ExtendWith(MockitoExtension.class) for JUnit 5
+
+5. Test Scenarios to Cover:
+   - Happy path scenarios with valid inputs
+   - Boundary value testing
+   - Null and empty parameter handling
+   - Exception scenarios (expected exceptions)
+   - Static method invocations if present
+
+6. Code Quality:
+   - Follow AAA pattern (Arrange, Act, Assert)
+   - Use meaningful test method names
+   - Add comments explaining complex test scenarios
+   - Ensure tests are independent and can run in any order
+
+Analyze the class structure first and identify all methods (public, private, protected, static) before generating tests. Generate complete, compilable test code with all necessary imports.
