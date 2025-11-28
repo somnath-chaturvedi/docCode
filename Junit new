@@ -1,0 +1,35 @@
+Generate comprehensive JUnit5 test cases for the class `[YourClassName]` with the following critical requirements:
+Coverage Requirements
+•	Achieve 100% line coverage for all methods in the class
+•	Test all method types: public, private, protected, package-private, static, and instance methods
+•	Cover all code branches, including if-else statements, switch cases, loops, and exception handling paths
+•	Test all edge cases: null values, empty collections, zero/negative numbers, minimum/maximum values, boundary conditions, and invalid inputs[sonarsource]
+Testing Approach for Different Method Types
+1.	Public methods: Test directly using standard JUnit5 assertions
+2.	Private methods: Use Java Reflection API to test private methods by using `getDeclaredMethod()` and `setAccessible(true)`[educative]
+3.	Static methods: Test directly by calling the static methods on the class
+4.	Protected/package-private methods: Test directly from the same package structure
+Critical Constraints
+•	DO NOT suggest any modifications to the existing class under test - the class cannot be changed
+•	All test cases must compile and run successfully without requiring changes to the original class
+•	If private methods exist, implement reflection-based testing approach rather than suggesting to change method visibility[educative]
+Test Case Structure Requirements
+Generate test cases using JUnit5 annotations and follow the Arrange-Act-Assert (AAA) pattern:[sonarsource]
+•	`@Test` for each test method
+•	`@BeforeEach` for setup if needed
+•	`@AfterEach` for cleanup if needed
+•	Use descriptive test method names that clearly indicate what is being tested
+•	Include assertions using `org.junit.jupiter.api.Assertions` methods
+Additional Requirements
+•	Mock external dependencies using Mockito where necessary
+•	Test exception scenarios using `assertThrows()`
+•	Parameterize tests using `@ParameterizedTest` where multiple similar test cases exist
+•	Include comments explaining complex test scenarios
+•	Verify that each test case is independent and can run in isolation
+•	Ensure all assertions are meaningful and verify expected behavior[graphite]
+Expected Deliverables
+1.	Complete test class with all necessary imports
+2.	Test methods covering every line of code in `[YourClassName]`
+3.	Helper methods for reflection-based private method testing if applicable[educative]
+4.	Mock setups for any dependencies
+5.	Verification that 100% line coverage is achievable with these tests
