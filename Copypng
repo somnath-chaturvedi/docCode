@@ -1,0 +1,48 @@
+CRITICAL: The generated HTML/CSS MUST look EXACTLY the same as the attached PNG design image. Pixel-perfect accuracy is required.
+
+Generate HTML and CSS files that precisely replicate the attached PNG design with the following requirements:
+
+EXACT VISUAL REPLICATION:
+- Match colors EXACTLY using a color picker from the image (include hex codes)
+- Replicate font sizes, weights, and line heights precisely
+- Copy exact spacing, padding, and margins (measure pixel distances)
+- Maintain exact proportions and dimensions for all elements
+- Match border radius, shadows, and visual effects exactly
+- Use the same image aspect ratios and positioning
+- Preserve exact alignment of all elements
+
+FILE STRUCTURE:
+- Create index.html and styles.css files
+- Link CSS file in HTML head section
+
+HTML REQUIREMENTS:
+- Use semantic HTML5 elements (header, nav, main, section, footer)
+- Assign unique, descriptive IDs to major sections (e.g., id="hero-section", id="product-grid")
+- Use BEM naming convention for classes (e.g., class="header__nav-link--active")
+- All IDs and class names must be unique and meaningful
+- Include proper alt text and accessibility attributes
+
+CSS REQUIREMENTS:
+- Extract and use the EXACT colors from the PNG (use hex values)
+- Define CSS custom properties for all colors, fonts, and spacing values
+- Use precise pixel measurements for spacing, sizing, and typography
+- Implement the exact layout structure (Flexbox/Grid) matching the design
+- Add exact border-radius, box-shadows, and other visual effects
+- Make it responsive while maintaining the exact look on all screen sizes
+- Use appropriate font families (if recognizable) or specify web-safe alternatives
+
+MEASUREMENT PRECISION:
+- Calculate exact pixel values for widths, heights, padding, and margins
+- Match exact font sizes and line heights
+- Replicate precise spacing between elements
+- Ensure button sizes, icon sizes match exactly
+
+ITERATIVE REFINEMENT:
+- Compare the rendered output with the original PNG
+- Adjust code iteratively until it matches 99%+ pixel accuracy
+- Fine-tune any discrepancies in spacing, colors, or alignment
+
+OUTPUT:
+- Production-ready, clean, well-commented code
+- Organized CSS with logical grouping
+- No placeholder content - extract actual text from the image
