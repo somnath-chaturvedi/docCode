@@ -1,3 +1,49 @@
+<div class="search-box">
+  <input type="text" placeholder="Search..." />
+  <button class="search-btn" type="button">
+    🔍
+  </button>
+</div>
+
+
+.search-box {
+  position: relative;
+  width: 320px;
+}
+
+.search-box input {
+  width: 100%;
+  height: 42px;
+  padding: 0 45px 0 15px; /* space for icon */
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  font-size: 14px;
+  outline: none;
+}
+
+.search-box input:focus {
+  border-color: #4a90e2;
+}
+
+.search-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #4a90e2;
+  border-radius: 50%;
+}
+
+.search-btn:hover {
+  background-color: #f0f4ff;
+}
+
 <div class="pagination">
   <button class="page-btn" disabled>&laquo;</button>
   <button class="page-btn" disabled>&lsaquo;</button>
